@@ -6,8 +6,9 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# If you don't want a separate requirements.txt, you can install Flask directly
-RUN pip install --no-cache-dir Flask
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy only your app (keeps image smaller)
 COPY app.py /app/
