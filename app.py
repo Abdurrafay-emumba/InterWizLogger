@@ -1,21 +1,13 @@
-import os
-import re
-from datetime import datetime, timezone, date
+from datetime import datetime, date
 
 from flask import Flask, request, jsonify
 
-import google_spread_sheet
+from google_spread_sheet_queue import google_sheets_queue
 
 app = Flask(__name__)
-LOG_DIR = "logs"
-os.makedirs(LOG_DIR, exist_ok=True)
 
-def safe_basename_from_email(email: str) -> str:
-    """
-    Keep it filesystem-safe: letters, numbers, underscore, hyphen only.
-    """
-
-    return re.sub(r"[^a-z0-9_-]", "_", email)
+sheets_queue = google_sheets_queue("InterWiz App Logs")
+sheets_queue.start_worker()
 
 @app.post("/log")
 def log_event():
@@ -30,19 +22,13 @@ def log_event():
 
         today = date.today()
         now = datetime.now()
-        # Build log line
-        entry = {
-            "date": today.strftime("%Y-%m-%d"),
-            "timestamp": now.strftime("%H:%M:%S"),
-            "email": email,
-            "event": event,
-        }
 
         csv_data = [
                         ["Date", "Time", "Email", "Event"],
-                        [entry["date"], entry["timestamp"], entry["email"], entry["event"]]
+                        [today.strftime("%Y-%m-%d"), now.strftime("%H:%M:%S"), email, event]
                     ]
-        google_spread_sheet.append_or_create_tab_by_id("InterWiz App Logs", csv_data)
+
+        sheets_queue.enqueue(csv_data)
 
         return jsonify({"ok": True, "saved_to": "Google Sheets"})
     except Exception as e:
